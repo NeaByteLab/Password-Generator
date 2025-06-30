@@ -23,7 +23,7 @@ A modern, minimalistic password generator with strength checker — Built using 
 1️⃣ Open `index.html` directly in your browser  
 2️⃣ Or deploy to GitHub Pages  
 
-> 🚀 Live Demo: [👉 View live on GitHub Pages](https://neabytelab.github.io/password-generator)
+> 🚀 Live Demo: [👉 View live on GitHub Pages](https://neabytelab.github.io/Password-Generator)
 
 ---
 
