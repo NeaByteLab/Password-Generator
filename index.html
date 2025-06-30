@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Password Generator</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Open Sans', sans-serif }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3B82F6;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2)
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3B82F6;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2)
+    }
+    .password-copied-notification {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #10B981;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      z-index: 1000
+    }
+    .password-copied-notification.show {
+      opacity: 1
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-100 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white shadow-2xl rounded-xl p-8 w-full max-w-md border border-gray-200">
+    <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Password Generator</h1>
+    <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden mb-5 shadow-sm">
+      <input id="password" type="text" readonly
+             class="w-full p-3 bg-gray-50 text-gray-800 text-lg font-mono outline-none"
+             placeholder="Generated password..."
+             aria-live="polite" aria-atomic="true">
+      <button id="generateBtn"
+              class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-3 rounded-r-xl transition-colors duration-200"
+              aria-label="Generate new password">
+        <i class="fa-solid fa-dice text-xl"></i>
+      </button>
+    </div>
+    <div class="mb-5">
+      <button id="copyBtn"
+              class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white py-3 rounded-xl transition-colors duration-200 shadow-md">
+        <i class="fa-solid fa-copy"></i> Copy Password
+      </button>
+    </div>
+    <div class="mb-6 space-y-3">
+      <label for="includeUpper" class="flex items-center gap-3 text-gray-700 text-lg cursor-pointer">
+        <input type="checkbox" id="includeUpper" class="accent-blue-600 w-5 h-5 rounded-md" checked> Uppercase (A-Z)
+      </label>
+      <label for="includeLower" class="flex items-center gap-3 text-gray-700 text-lg cursor-pointer">
+        <input type="checkbox" id="includeLower" class="accent-blue-600 w-5 h-5 rounded-md" checked> Lowercase (a-z)
+      </label>
+      <label for="includeNumber" class="flex items-center gap-3 text-gray-700 text-lg cursor-pointer">
+        <input type="checkbox" id="includeNumber" class="accent-blue-600 w-5 h-5 rounded-md" checked> Numbers (0-9)
+      </label>
+      <label for="includeSymbol" class="flex items-center gap-3 text-gray-700 text-lg cursor-pointer">
+        <input type="checkbox" id="includeSymbol" class="accent-blue-600 w-5 h-5 rounded-md"> Symbols (!@#$)
+      </label>
+    </div>
+    <div class="mb-6">
+      <label for="lengthRange" class="block text-lg font-medium mb-2 text-gray-700">Character Length: <span id="lengthVal" class="text-blue-600 font-bold">12</span></label>
+      <input type="range" id="lengthRange" min="6" max="32" value="12" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+    </div>
+    <div class="bg-gray-50 rounded-xl p-4 text-base border border-gray-200">
+      <div class="flex items-center gap-3">
+        <i id="strengthIcon" class="fa-solid fa-circle-question text-gray-400 text-xl"></i>
+        <span id="strengthText" class="text-gray-600 font-medium">Strength: -</span>
+      </div>
+      <div id="strengthBarContainer" class="mt-3 h-2 rounded-full bg-gray-300 overflow-hidden hidden">
+        <div id="strengthBar" class="h-full rounded-full transition-all duration-300 ease-in-out" style="width: 0%;"></div>
+      </div>
+    </div>
+  </div>
+  <div id="copiedNotification" class="password-copied-notification">
+    <i class="fa-solid fa-check mr-2"></i> Password copied!
+  </div>
+  <script>
+    const passwordInput = document.getElementById('password')
+    const copyButton = document.getElementById('copyBtn')
+    const generateButton = document.getElementById('generateBtn')
+    const lengthSlider = document.getElementById('lengthRange')
+    const lengthValueText = document.getElementById('lengthVal')
+    const strengthIndicatorText = document.getElementById('strengthText')
+    const strengthIndicatorIcon = document.getElementById('strengthIcon')
+    const strengthDisplayBar = document.getElementById('strengthBar')
+    const strengthBarVisualContainer = document.getElementById('strengthBarContainer')
+    const copiedMessageNotification = document.getElementById('copiedNotification')
+    const includeUpperCaseCheckbox = document.getElementById('includeUpper')
+    const includeLowerCaseCheckbox = document.getElementById('includeLower')
+    const includeNumberCheckbox = document.getElementById('includeNumber')
+    const includeSymbolCheckbox = document.getElementById('includeSymbol')
+
+    // Character Sets
+    const CHARACTER_SETS_DEFINITION = {
+      upperCase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+      lowerCase: 'abcdefghijklmnopqrstuvwxyz',
+      numericDigits: '0123456789',
+      specialSymbols: '!@#$%^&*()_+-=[]{}|;:,.<>/?~`'
+    }
+
+    /**
+     * Shows A Temporary Notification Message
+     * Params: MessageText
+     */
+    function showTemporaryNotification (messageText) {
+      copiedMessageNotification.textContent = messageText
+      copiedMessageNotification.classList.add('show')
+      setTimeout(() => {
+        copiedMessageNotification.classList.remove('show')
+      }, 1500)
+    }
+
+    /**
+     * Copies The Generated Password To The Clipboard
+     */
+    function copyGeneratedPassword () {
+      if (!(passwordInput.value === '')) {
+        navigator.clipboard.writeText(passwordInput.value)
+          .then(() => showTemporaryNotification('Password copied!'))
+          .catch(errorDetails => {
+            console.error('Failed To Copy Password: ', errorDetails)
+            try {
+              const temporaryInput = document.createElement('textarea')
+              temporaryInput.value = passwordInput.value
+              document.body.appendChild(temporaryInput)
+              temporaryInput.select()
+              document.execCommand('copy')
+              document.body.removeChild(temporaryInput)
+              showTemporaryNotification('Password copied! (fallback)')
+            } catch (fallbackErrorDetails) {
+              console.error('Fallback Copy Failed: ', fallbackErrorDetails)
+              showTemporaryNotification('Could Not Copy Password')
+            }
+          })
+      } else {
+        showTemporaryNotification('No Password To Copy')
+      }
+    }
+
+    /**
+     * Generates A Random Password Based On Selected Criteria
+     */
+    function generateNewPassword () {
+      let characterSet = ''
+      const passwordLength = parseInt(lengthSlider.value)
+
+      if (includeUpperCaseCheckbox.checked) {
+        characterSet += CHARACTER_SETS_DEFINITION.upperCase
+      }
+      if (includeLowerCaseCheckbox.checked) {
+        characterSet += CHARACTER_SETS_DEFINITION.lowerCase
+      }
+      if (includeNumberCheckbox.checked) {
+        characterSet += CHARACTER_SETS_DEFINITION.numericDigits
+      }
+      if (includeSymbolCheckbox.checked) {
+        characterSet += CHARACTER_SETS_DEFINITION.specialSymbols
+      }
+      if (characterSet === '') {
+        passwordInput.value = ''
+        strengthIndicatorText.textContent = 'Strength: -'
+        strengthIndicatorText.className = 'text-gray-600 font-medium'
+        strengthIndicatorIcon.className = 'fa-solid fa-circle-question text-gray-400 text-xl'
+        strengthBarVisualContainer.classList.add('hidden')
+        return
+      }
+      let generatedPassword = ''
+      if (includeUpperCaseCheckbox.checked) {
+        generatedPassword += getRandomCharacter(CHARACTER_SETS_DEFINITION.upperCase)
+      }
+      if (includeLowerCaseCheckbox.checked) {
+        generatedPassword += getRandomCharacter(CHARACTER_SETS_DEFINITION.lowerCase)
+      }
+      if (includeNumberCheckbox.checked) {
+        generatedPassword += getRandomCharacter(CHARACTER_SETS_DEFINITION.numericDigits)
+      }
+      if (includeSymbolCheckbox.checked) {
+        generatedPassword += getRandomCharacter(CHARACTER_SETS_DEFINITION.specialSymbols)
+      }
+      for (let currentIteration = generatedPassword.length; currentIteration < passwordLength; currentIteration++) {
+        generatedPassword += getRandomCharacter(characterSet)
+      }
+      generatedPassword = shufflePasswordString(generatedPassword)
+      passwordInput.value = generatedPassword
+      updatePasswordStrength(generatedPassword)
+    }
+
+    /**
+     * Gets A Random Character From A Given Character Set
+     * Params: CharSet
+     */
+    function getRandomCharacter (charSet) {
+      const randomIndex = Math.floor(Math.random() * charSet.length)
+      return charSet[randomIndex]
+    }
+
+    /**
+     * Shuffles A String Randomly
+     * Params: StringToShuffle
+     */
+    function shufflePasswordString (stringToShuffle) {
+      let characterArray = stringToShuffle.split('')
+      for (let currentIteration = characterArray.length - 1; currentIteration > 0; currentIteration--) {
+        const randomSwapIndex = Math.floor(Math.random() * (currentIteration + 1))
+        let temporaryStorage = characterArray[currentIteration]
+        characterArray[currentIteration] = characterArray[randomSwapIndex]
+        characterArray[randomSwapIndex] = temporaryStorage
+      }
+      return characterArray.join('')
+    }
+
+    /**
+     * Updates The Password Strength Indicator
+     * Params: PasswordString
+     */
+    function updatePasswordStrength (passwordString) {
+      let strengthScore = 0
+      if (/[a-z]/.test(passwordString)) {
+        strengthScore++
+      }
+      if (/[A-Z]/.test(passwordString)) {
+        strengthScore++
+      }
+      if (/[0-9]/.test(passwordString)) {
+        strengthScore++
+      }
+      if (/[!@#$%^&*()_+-=\[\]{}|;:,.<>/?~`]/.test(passwordString)) {
+        strengthScore++
+      }
+      if (passwordString.length >= 8) {
+        strengthScore++
+      }
+      if (passwordString.length >= 12) {
+        strengthScore++
+      }
+      if (passwordString.length >= 16) {
+        strengthScore++
+      }
+      if (passwordString.length >= 20) {
+        strengthScore++
+      }
+      let currentStrengthStatus = ''
+      let visualColorClass = ''
+      let iconDisplayClass = ''
+      let barFillColor = ''
+      let barFillWidth = 0
+      if (strengthScore <= 2) {
+        currentStrengthStatus = 'Weak'
+        visualColorClass = 'text-red-600'
+        iconDisplayClass = 'fa-solid fa-triangle-exclamation'
+        barFillColor = 'bg-red-500'
+        barFillWidth = (strengthScore / 5) * 100
+      } else if (strengthScore <= 4) {
+        currentStrengthStatus = 'Medium'
+        visualColorClass = 'text-orange-500'
+        iconDisplayClass = 'fa-solid fa-shield-halved'
+        barFillColor = 'bg-orange-400'
+        barFillWidth = (strengthScore / 5) * 100
+      } else {
+        currentStrengthStatus = 'Strong'
+        visualColorClass = 'text-green-600'
+        iconDisplayClass = 'fa-solid fa-circle-check'
+        barFillColor = 'bg-green-500'
+        barFillWidth = (strengthScore / 5) * 100
+      }
+      strengthIndicatorText.textContent = `Strength: ${currentStrengthStatus}`
+      strengthIndicatorText.className = `${visualColorClass} font-medium`
+      strengthIndicatorIcon.className = `${iconDisplayClass} ${visualColorClass} text-xl`
+      strengthBarVisualContainer.classList.remove('hidden')
+      strengthDisplayBar.style.width = `${barFillWidth}%`
+      strengthDisplayBar.className = `h-full rounded-full transition-all duration-300 ease-in-out ${barFillColor}`
+    }
+
+    [includeUpperCaseCheckbox, includeLowerCaseCheckbox, includeNumberCheckbox, includeSymbolCheckbox].forEach(htmlElement => {
+      htmlElement.addEventListener('change', generateNewPassword)
+    })
+    lengthSlider.addEventListener('input', () => {
+      lengthValueText.textContent = lengthSlider.value
+      generateNewPassword()
+    })
+    generateButton.addEventListener('click', generateNewPassword)
+    copyButton.addEventListener('click', copyGeneratedPassword)
+    window.onload = generateNewPassword
+  </script>
+</body>
+</html>
